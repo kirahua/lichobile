@@ -1,4 +1,4 @@
-import * as Tree from './interfaces'
+import { Tree } from './interfaces'
 
 function mainlineChild(node: Tree.Node): Tree.Node | undefined {
   return node.children[0]
