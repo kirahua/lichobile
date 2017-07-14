@@ -21,7 +21,6 @@ import CrazyPocket from '../../shared/round/crazy/CrazyPocket'
 import explorerView from '../explorer/explorerView'
 import evalSummary from '../evalSummaryPopup'
 import treePath from '../path'
-import { renderTree } from './treeView'
 import settings from '../../../settings'
 
 import AnalyseCtrl from '../AnalyseCtrl'
@@ -47,8 +46,8 @@ export function viewOnlyBoard(color: Color, bounds: ClientRect, isSmall: boolean
 
 export function renderContent(ctrl: AnalyseCtrl, isPortrait: boolean, bounds: ClientRect) {
   const player = ctrl.data.game.player
-  const ceval = ctrl.vm.step && ctrl.vm.step.ceval
-  const rEval = ctrl.vm.step && ctrl.vm.step.rEval
+  const ceval = ctrl.node && ctrl.node.ceval
+  const rEval = ctrl.node && ctrl.node.rEval
 
   let board: Mithril.BaseNode
 
@@ -65,7 +64,7 @@ export function renderContent(ctrl: AnalyseCtrl, isPortrait: boolean, bounds: Cl
     moveOrDropShape(rEval.best, 'paleGreen', player) : []
   }
 
-  const nextStep = ctrl.explorer.enabled() && ctrl.vm.step && ctrl.analyse.getStepAtPly(ctrl.vm.step.ply + 1)
+  const nextStep = ctrl.explorer.enabled() && ctrl.node && ctrl.analyse.getStepAtPly(ctrl.node.ply + 1)
 
   const nextMoveShape: Shape[] = nextStep && nextStep.uci ?
   moveOrDropShape(nextStep.uci, 'palePurple', player) : []
@@ -162,7 +161,6 @@ const Replay: Mithril.Component<{ ctrl: AnalyseCtrl }, {}> = {
         oncreate={helper.ontapY(e => onReplayTap(ctrl, e!), undefined, getMoveEl)}
       >
         { renderOpeningBox(ctrl) }
-        { renderTree(ctrl, ctrl.analyse.tree) }
       </div>
     )
   }
@@ -187,7 +185,7 @@ const EvalBox: Mithril.Component<{ ctrl: AnalyseCtrl }, {}> = {
   },
   view({ attrs }) {
     const { ctrl } = attrs
-    const step = ctrl.vm.step
+    const step = ctrl.node
     if (!step) return null
 
     const { rEval, ceval } = step
@@ -306,7 +304,7 @@ function renderVariantSelector(ctrl: AnalyseCtrl) {
 }
 
 function getChecksCount(ctrl: AnalyseCtrl, color: Color) {
-  const step = ctrl.vm.step
+  const step = ctrl.node
   return step && step.checkCount && step.checkCount[oppositeColor(color)]
 }
 
@@ -320,9 +318,9 @@ function renderSyntheticPockets(ctrl: AnalyseCtrl) {
           <span className={'color-icon ' + player.color} />
           {player.color}
         </div>
-        {ctrl.vm.step && ctrl.vm.step.crazy ? h(CrazyPocket, {
+        {ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.vm.step.crazy,
+          crazyData: ctrl.node.crazy,
           color: player.color,
           position: 'top'
         }) : null}
@@ -332,9 +330,9 @@ function renderSyntheticPockets(ctrl: AnalyseCtrl) {
           <span className={'color-icon ' + opponent.color} />
           {opponent.color}
         </div>
-        {ctrl.vm.step && ctrl.vm.step.crazy ? h(CrazyPocket, {
+        {ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.vm.step.crazy,
+          crazyData: ctrl.node.crazy,
           color: opponent.color,
           position: 'bottom'
         }) : null}
@@ -357,7 +355,7 @@ function renderGameInfos(ctrl: AnalyseCtrl, isPortrait: boolean) {
           <span className={'color-icon ' + player.color} />
           {playerName(player, true)}
           {helper.renderRatingDiff(player)}
-          { ctrl.data.game.variant.key === 'threeCheck' && ctrl.vm.step && ctrl.vm.step.checkCount ?
+          { ctrl.data.game.variant.key === 'threeCheck' && ctrl.node && ctrl.node.checkCount ?
             ' +' + getChecksCount(ctrl, player.color) : null
           }
         </div>
@@ -367,9 +365,9 @@ function renderGameInfos(ctrl: AnalyseCtrl, isPortrait: boolean) {
             <span className="fa fa-clock-o" />
           </div> : null
         }
-        {isCrazy && ctrl.vm.step && ctrl.vm.step.crazy ? h(CrazyPocket, {
+        {isCrazy && ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.vm.step.crazy,
+          crazyData: ctrl.node.crazy,
           color: player.color,
           position: 'top'
         }) : null}
@@ -379,7 +377,7 @@ function renderGameInfos(ctrl: AnalyseCtrl, isPortrait: boolean) {
           <span className={'color-icon ' + opponent.color} />
           {playerName(opponent, true)}
           {helper.renderRatingDiff(opponent)}
-          { ctrl.data.game.variant.key === 'threeCheck' && ctrl.vm.step && ctrl.vm.step.checkCount ?
+          { ctrl.data.game.variant.key === 'threeCheck' && ctrl.node && ctrl.node.checkCount ?
             ' +' + getChecksCount(ctrl, opponent.color) : null
           }
         </div>
@@ -389,9 +387,9 @@ function renderGameInfos(ctrl: AnalyseCtrl, isPortrait: boolean) {
             <span className="fa fa-clock-o" />
           </div> : null
         }
-        {isCrazy && ctrl.vm.step && ctrl.vm.step.crazy ? h(CrazyPocket, {
+        {isCrazy && ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.vm.step.crazy,
+          crazyData: ctrl.node.crazy,
           color: opponent.color,
           position: 'bottom'
         }) : null}

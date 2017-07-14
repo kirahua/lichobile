@@ -1,3 +1,5 @@
+import { Tree } from './interfaces'
+
 export const root: Tree.Path = ''
 
 export function size(path: Tree.Path): number {

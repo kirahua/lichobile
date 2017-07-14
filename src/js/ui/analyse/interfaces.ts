@@ -1,5 +1,12 @@
 import { GameData, GameStep, Opening } from '../../lichess/interfaces/game'
+import { Tree } from '../../utils/tree'
 import AnalyseCtrl from './AnalyseCtrl'
+
+export interface AnalysisData extends GameData {
+  analysis?: RemoteAnalysis
+  steps: AnalysisTree
+  treeParts: Tree.Node[]
+}
 
 export interface RoleToSan {
   [role: string]: SanChar
@@ -57,11 +64,6 @@ export interface RemoteEvalSummary {
 export interface RemoteAnalysis {
   moves: Array<RemoteAnalysisMove>
   summary: RemoteEvalSummary
-}
-
-export interface AnalysisData extends GameData {
-  analysis?: RemoteAnalysis
-  steps: AnalysisTree
 }
 
 export interface Glyph {
@@ -123,9 +125,6 @@ export interface CevalCtrlInterface {
 export interface VM {
   formattedDate: string
   shouldGoBack: boolean
-  path: Path
-  pathStr: string
-  step?: AnalysisStep
   cgConfig?: Chessground.SetConfig
   variationMenu?: Path
   flip: boolean
