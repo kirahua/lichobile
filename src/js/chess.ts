@@ -68,12 +68,12 @@ export interface MoveRequest {
   pgnMoves?: Array<string>
   uciMoves?: Array<string>
   promotion?: Role
-  path?: string
+  path: string
 }
 
 export interface MoveResponse {
   situation: GameSituation
-  path?: string
+  path: string
 }
 
 export interface DropRequest {
@@ -83,7 +83,7 @@ export interface DropRequest {
   role: Role
   pgnMoves?: Array<string>
   uciMoves?: Array<string>
-  path?: string
+  path: string
 }
 
 export interface ThreefoldTestRequest {

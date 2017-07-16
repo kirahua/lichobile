@@ -1,10 +1,10 @@
-import { GameData, GameStep, Opening } from '../../lichess/interfaces/game'
+import { GameData } from '../../lichess/interfaces/game'
 import { Tree } from '../../utils/tree'
 import AnalyseCtrl from './AnalyseCtrl'
 
 export interface AnalysisData extends GameData {
   analysis?: RemoteAnalysis
-  steps: AnalysisTree
+  steps: any
   treeParts: Tree.Node[]
 }
 
@@ -17,14 +17,6 @@ export interface SanToRole {
 }
 
 export type Source = 'online' | 'offline'
-
-export interface PathObj {
-  ply: number
-  variation: number | undefined
-}
-
-export type AnalysisTree = Array<AnalysisStep>
-export type Path = Array<PathObj>
 
 export interface EvalJugdment {
   comment: string
@@ -71,49 +63,25 @@ export interface Glyph {
   name: string
 }
 
-// everything is optional bc fetched async with chess.ts worker
-// for online game data
-export interface AnalysisStep extends GameStep {
-  ceval?: Ceval
-  rEval?: RemoteEval
-  fixed?: boolean
-  variations?: Array<AnalysisTree>
-  pgnMoves?: Array<string>
-  end?: boolean
-  nag?: string
-  player?: Color
-  opening?: Opening | null
-}
-
 export interface CevalWork {
   initialFen: string
   currentFen: string
   moves: string
-  path: Path
-  steps: AnalysisTree
+  path: Tree.Path
+  steps: Tree.Node[]
   ply: number
   emit: (res: CevalEmit) => void
 }
 
-export interface Ceval {
-  depth: number
-  maxDepth: number
-  cp: number | undefined
-  mate: number | undefined
-  best: string
-  nps: number
-  bestSan?: string
-}
-
 export interface CevalEmit {
   work: CevalWork
-  ceval: Ceval
+  ceval: Tree.ClientEval
 }
 
 export interface CevalCtrlInterface {
   init(): Promise<void>
   isInit(): boolean
-  start(path: Path, steps: AnalysisTree): void
+  start(path: Tree.Path, steps: Tree.Node[]): void
   stop(): void
   destroy(): void
   allowed: boolean
@@ -126,7 +94,7 @@ export interface VM {
   formattedDate: string
   shouldGoBack: boolean
   cgConfig?: Chessground.SetConfig
-  variationMenu?: Path
+  variationMenu?: Tree.Path
   flip: boolean
   smallBoard: boolean
   analysisProgress: boolean

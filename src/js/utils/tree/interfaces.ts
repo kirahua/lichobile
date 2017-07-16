@@ -1,3 +1,5 @@
+import { Pockets } from '../../lichess/interfaces/game'
+
 export namespace Tree {
   export type Path = string
 
@@ -13,6 +15,8 @@ export namespace Tree {
     cp?: number
     mate?: number
     retried?: boolean
+    best: string
+    bestSan?: string
   }
 
   export interface ServerEval {
@@ -34,13 +38,14 @@ export namespace Tree {
     fen: Fen
     children: Node[]
     comments?: Comment[]
-    dests?: string
-    drops: string | undefined | null
+    // TODO maybe don't keep both formats for dests & drops
+    dests?: string | DestsMap
+    drops: string | string[] | undefined | null
     check: boolean
     threat?: ClientEval
     ceval?: ClientEval
     eval?: ServerEval
-    opening?: Opening
+    opening?: Opening | null
     glyphs?: Glyph[]
     clock?: Clock
     parentClock?: Clock
@@ -50,6 +55,14 @@ export namespace Tree {
     threefold?: boolean
     fail?: boolean
     puzzle?: string
+    // added dynamically during analysis from chess worker
+    checkCount?: { white: number, black: number }
+    pgnMoves?: string[]
+    player?: Color
+    end?: boolean
+    crazyhouse?: {
+      pockets: Pockets
+    }
   }
 
   export interface Comment {

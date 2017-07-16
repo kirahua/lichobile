@@ -6,6 +6,7 @@ export type MaybeNode = Tree.Node | undefined
 
 export interface TreeWrapper {
   root: Tree.Node
+  firstPly(): number
   lastPly(): number
   nodeAtPath(path: Tree.Path): Tree.Node
   getNodeList(path: Tree.Path): Tree.Node[]
@@ -35,7 +36,7 @@ export interface TreeWrapper {
 export function build(root: Tree.Node): TreeWrapper {
 
   function lastNode(): Tree.Node {
-    return ops.findInMainline(root, function(node: Tree.Node) {
+    return ops.findInMainline(root, (node: Tree.Node) => {
       return !node.children.length
     })!
   }
@@ -67,8 +68,8 @@ export function build(root: Tree.Node): TreeWrapper {
   }
 
   function getCurrentNodesAfterPly(nodeList: Tree.Node[], mainline: Tree.Node[], ply: number): Tree.Node[] {
-    var node, nodes = []
-    for (var i in nodeList) {
+    let node, nodes = []
+    for (let i in nodeList) {
       node = nodeList[i]
       if (node.ply <= ply && mainline[i].id !== node.id) break
       if (node.ply > ply) nodes.push(node)
@@ -101,7 +102,7 @@ export function build(root: Tree.Node): TreeWrapper {
   }
 
   function getNodeList(path: Tree.Path): Tree.Node[] {
-    return ops.collect(root, function(node: Tree.Node) {
+    return ops.collect(root, node => {
       const id = treePath.head(path)
       if (id === '') return
       path = treePath.tail(path)
@@ -129,35 +130,35 @@ export function build(root: Tree.Node): TreeWrapper {
   // returns new path
   function addNode(node: Tree.Node, path: Tree.Path): Tree.Path | undefined {
     const newPath = path + node.id
-    var existing = nodeAtPathOrNull(newPath)
+    const existing = nodeAtPathOrNull(newPath)
     if (existing) {
       if (node.dests !== undefined && existing.dests === undefined) existing.dests = node.dests
       if (node.drops !== undefined && existing.drops === undefined) existing.drops = node.drops
       return newPath
     }
-    return updateAt(path, function(parent: Tree.Node) {
+    return updateAt(path, (parent: Tree.Node) =>
       parent.children.push(node)
-    }) ? newPath : undefined
+    ) ? newPath : undefined
   }
 
   function addNodes(nodes: Tree.Node[], path: Tree.Path): Tree.Path | undefined {
-    var node = nodes[0]
+    const node = nodes[0]
     if (!node) return path
     const newPath = addNode(node, path)
     return newPath ? addNodes(nodes.slice(1), newPath) : undefined
   }
 
   function deleteNodeAt(path: Tree.Path): void {
-    var parent = nodeAtPath(treePath.init(path))
-    var id = treePath.last(path)
+    const parent = nodeAtPath(treePath.init(path))
+    const id = treePath.last(path)
     ops.removeChild(parent, id)
   }
 
   function promoteAt(path: Tree.Path, toMainline: boolean): void {
-    var nodes = getNodeList(path)
-    for (var i = nodes.length - 2; i >= 0; i--) {
-      var node = nodes[i + 1]
-      var parent = nodes[i]
+    const nodes = getNodeList(path)
+    for (let i = nodes.length - 2; i >= 0; i--) {
+      const node = nodes[i + 1]
+      const parent = nodes[i]
       if (parent.children[0].id !== node.id) {
         ops.removeChild(parent, node.id)
         parent.children.unshift(node)
@@ -210,6 +211,9 @@ export function build(root: Tree.Node): TreeWrapper {
 
   return {
     root,
+    firstPly(): number {
+      return root.ply
+    },
     lastPly(): number {
       return lastNode().ply
     },
