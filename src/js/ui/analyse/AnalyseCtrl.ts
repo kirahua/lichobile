@@ -83,7 +83,7 @@ export default class AnalyseCtrl {
       router.set('/')
     }
 
-    this.tree = makeTree(treeOps.reconstruct(this.data.treeParts));
+    this.tree = makeTree(treeOps.reconstruct(this.data.treeParts))
 
     this.settings = analyseSettings.controller(this)
     this.menu = menu.controller(this)
@@ -132,10 +132,10 @@ export default class AnalyseCtrl {
   }
 
   setPath = (path: Tree.Path): void => {
-    this.path = path;
-    this.nodeList = this.tree.getNodeList(path);
-    this.node = treeOps.last(this.nodeList) as Tree.Node;
-    this.mainline = treeOps.mainlineNodeList(this.tree.root);
+    this.path = path
+    this.nodeList = this.tree.getNodeList(path)
+    this.node = treeOps.last(this.nodeList) as Tree.Node
+    this.mainline = treeOps.mainlineNodeList(this.tree.root)
     this.onMainline = this.tree.pathIsMainline(path)
   }
 
@@ -388,9 +388,13 @@ export default class AnalyseCtrl {
       crazyhouse: situation.crazyhouse,
       pgnMoves: curNode && curNode.pgnMoves ? curNode.pgnMoves.concat(situation.pgnMoves) : undefined
     }
-    const newPath = this.tree.addNode(node, path);
+    if (path === undefined) {
+      console.error('Cannot addNode, missing path', node)
+      return
+    }
+    const newPath = this.tree.addNode(node, path)
     if (!newPath) {
-      console.error('Cannot addNode', node, path);
+      console.error('Cannot addNode', node, path)
       return
     }
     this.jump(newPath)
@@ -558,7 +562,7 @@ export default class AnalyseCtrl {
 
   mergeAnalysisData(data: AnalyseDataWithTree): void {
     this.tree.merge(data.tree)
-    this.data.analysis = data.analysis;
+    this.data.analysis = data.analysis
     redraw()
   }
 
