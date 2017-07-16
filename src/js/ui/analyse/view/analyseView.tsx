@@ -1,12 +1,12 @@
 import * as h from 'mithril/hyperscript'
 import { hasNetwork, playerName, oppositeColor, noNull, gameIcon, flatten, noop } from '../../../utils'
 import * as chessFormat from '../../../utils/chessFormat'
+import * as treeOps from '../../../utils/tree/ops'
 import i18n from '../../../i18n'
 import router from '../../../router'
 import * as gameApi from '../../../lichess/game'
 import gameStatusApi from '../../../lichess/status'
 import continuePopup from '../../shared/continuePopup'
-import popupWidget from '../../shared/popup'
 import { view as renderPromotion } from '../../shared/offlineRound/promotion'
 import Board from '../../shared/Board'
 import ViewOnlyBoard from '../../shared/ViewOnlyBoard'
@@ -20,7 +20,6 @@ import { renderEval, isSynthetic } from '../util'
 import CrazyPocket from '../../shared/round/crazy/CrazyPocket'
 import explorerView from '../explorer/explorerView'
 import evalSummary from '../evalSummaryPopup'
-import treePath from '../path'
 import settings from '../../../settings'
 
 import AnalyseCtrl from '../AnalyseCtrl'
@@ -32,8 +31,7 @@ export function overlay(ctrl: AnalyseCtrl) {
     analyseSettings.view(ctrl.settings),
     ctrl.notes ? notesView(ctrl.notes) : null,
     ctrl.evalSummary ? evalSummary.view(ctrl.evalSummary) : null,
-    continuePopup.view(ctrl.continuePopup),
-    renderVariationMenu(ctrl)
+    continuePopup.view(ctrl.continuePopup)
   ].filter(noNull)
 }
 
@@ -47,14 +45,14 @@ export function viewOnlyBoard(color: Color, bounds: ClientRect, isSmall: boolean
 export function renderContent(ctrl: AnalyseCtrl, isPortrait: boolean, bounds: ClientRect) {
   const player = ctrl.data.game.player
   const ceval = ctrl.node && ctrl.node.ceval
-  const rEval = ctrl.node && ctrl.node.rEval
+  const rEval = ctrl.node && ctrl.node.eval
 
   let board: Mithril.BaseNode
 
   let nextBest: string | undefined
   let curBestShape: Shape[] = [], pastBestShape: Shape[] = []
   if (!ctrl.explorer.enabled() && ctrl.ceval.enabled() && ctrl.vm.showBestMove) {
-    nextBest = ctrl.nextStepBest()
+    nextBest = ctrl.nextNodeBest()
     curBestShape = nextBest ? moveOrDropShape(nextBest, 'paleBlue', player) :
     ceval && ceval.best ? moveOrDropShape(ceval.best, 'paleBlue', player) :
     []
@@ -64,7 +62,7 @@ export function renderContent(ctrl: AnalyseCtrl, isPortrait: boolean, bounds: Cl
     moveOrDropShape(rEval.best, 'paleGreen', player) : []
   }
 
-  const nextStep = ctrl.explorer.enabled() && ctrl.node && ctrl.analyse.getStepAtPly(ctrl.node.ply + 1)
+  const nextStep = ctrl.explorer.enabled() && ctrl.node && treeOps.nodeAtPly(ctrl.nodeList, ctrl.node.ply + 1)
 
   const nextMoveShape: Shape[] = nextStep && nextStep.uci ?
   moveOrDropShape(nextStep.uci, 'palePurple', player) : []
@@ -143,7 +141,7 @@ interface ReplayDataSet extends DOMStringMap {
 function onReplayTap(ctrl: AnalyseCtrl, e: Event) {
   const el = getMoveEl(e)
   if (el && (el.dataset as ReplayDataSet).path) {
-    ctrl.jump(treePath.read((el.dataset as ReplayDataSet).path))
+    ctrl.jump((el.dataset as ReplayDataSet).path)
   }
 }
 
@@ -167,7 +165,7 @@ const Replay: Mithril.Component<{ ctrl: AnalyseCtrl }, {}> = {
 }
 
 function renderOpeningBox(ctrl: AnalyseCtrl) {
-  const opening = ctrl.analyse.getOpening(ctrl.vm.path) || ctrl.data.game.opening
+  const opening = ctrl.tree.getOpening(ctrl.nodeList) || ctrl.data.game.opening
   if (opening) return h('div', {
     key: 'opening-box',
     className: 'analyse-openingBox',
@@ -185,11 +183,11 @@ const EvalBox: Mithril.Component<{ ctrl: AnalyseCtrl }, {}> = {
   },
   view({ attrs }) {
     const { ctrl } = attrs
-    const step = ctrl.node
-    if (!step) return null
+    const node = ctrl.node
+    if (!node) return null
 
-    const { rEval, ceval } = step
-    const fav = rEval || ceval
+    const { ceval } = node
+    const fav = node.eval || ceval
     let pearl: Mithril.Children, percent: number
 
     if (fav && fav.cp !== undefined) {
@@ -304,8 +302,8 @@ function renderVariantSelector(ctrl: AnalyseCtrl) {
 }
 
 function getChecksCount(ctrl: AnalyseCtrl, color: Color) {
-  const step = ctrl.node
-  return step && step.checkCount && step.checkCount[oppositeColor(color)]
+  const node = ctrl.node
+  return node && node.checkCount && node.checkCount[oppositeColor(color)]
 }
 
 function renderSyntheticPockets(ctrl: AnalyseCtrl) {
@@ -318,9 +316,9 @@ function renderSyntheticPockets(ctrl: AnalyseCtrl) {
           <span className={'color-icon ' + player.color} />
           {player.color}
         </div>
-        {ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
+        {ctrl.node && ctrl.node.crazyhouse ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.node.crazy,
+          crazyData: ctrl.node.crazyhouse,
           color: player.color,
           position: 'top'
         }) : null}
@@ -330,9 +328,9 @@ function renderSyntheticPockets(ctrl: AnalyseCtrl) {
           <span className={'color-icon ' + opponent.color} />
           {opponent.color}
         </div>
-        {ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
+        {ctrl.node && ctrl.node.crazyhouse ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.node.crazy,
+          crazyData: ctrl.node.crazyhouse,
           color: opponent.color,
           position: 'bottom'
         }) : null}
@@ -365,9 +363,9 @@ function renderGameInfos(ctrl: AnalyseCtrl, isPortrait: boolean) {
             <span className="fa fa-clock-o" />
           </div> : null
         }
-        {isCrazy && ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
+        {isCrazy && ctrl.node && ctrl.node.crazyhouse ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.node.crazy,
+          crazyData: ctrl.node.crazyhouse,
           color: player.color,
           position: 'top'
         }) : null}
@@ -387,9 +385,9 @@ function renderGameInfos(ctrl: AnalyseCtrl, isPortrait: boolean) {
             <span className="fa fa-clock-o" />
           </div> : null
         }
-        {isCrazy && ctrl.node && ctrl.node.crazy ? h(CrazyPocket, {
+        {isCrazy && ctrl.node && ctrl.node.crazyhouse ? h(CrazyPocket, {
           ctrl: { chessground: ctrl.chessground, canDrop: ctrl.canDrop },
-          crazyData: ctrl.node.crazy,
+          crazyData: ctrl.node.crazyhouse,
           color: opponent.color,
           position: 'bottom'
         }) : null}
@@ -413,38 +411,6 @@ function renderStatus(ctrl: AnalyseCtrl) {
 
       {winner ? '. ' + i18n(winner.color === 'white' ? 'whiteIsVictorious' : 'blackIsVictorious') + '.' : null}
     </div>
-  )
-}
-
-function renderVariationMenuContent(ctrl: AnalyseCtrl) {
-  const path = ctrl.vm.variationMenu
-  if (!path) return null
-  const step = ctrl.analyse.getStepAtPly(path[0].ply)
-  if (!step) return null
-
-  const promotable = isSynthetic(ctrl.data) || !step.fixed
-
-  return h('div.variationMenu', [
-    h('button', {
-      className: 'withIcon',
-      'data-icon': 'q',
-      oncreate: helper.ontap(() => ctrl.deleteVariation(path))
-    }, 'Delete variation'),
-    promotable ? h('button', {
-      className: 'withIcon',
-      'data-icon': 'E',
-      oncreate: helper.ontap(() => ctrl.promoteVariation(path))
-    }, 'Promote to main line') : null
-  ])
-}
-
-function renderVariationMenu(ctrl: AnalyseCtrl) {
-  return popupWidget(
-    'variationMenuPopup',
-    undefined,
-    () => renderVariationMenuContent(ctrl),
-    !!ctrl.vm.variationMenu,
-    () => ctrl.toggleVariationMenu()
   )
 }
 

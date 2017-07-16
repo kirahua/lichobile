@@ -25,7 +25,7 @@ import evalSummary from './evalSummaryPopup'
 import analyseSettings from './analyseSettings'
 import ground from './ground'
 import socketHandler from './analyseSocketHandler'
-import { VM, AnalysisData, SanToRole, Source, ExplorerCtrlInterface, CevalCtrlInterface, MenuInterface, CevalEmit } from './interfaces'
+import { VM, AnalysisData, AnalyseDataWithTree, SanToRole, Source, ExplorerCtrlInterface, CevalCtrlInterface, MenuInterface, CevalEmit } from './interfaces'
 
 const sanToRole: SanToRole = {
   P: 'pawn',
@@ -75,7 +75,7 @@ export default class AnalyseCtrl {
     this.data = data
     this.orientation = orientation
     this.source = source
-
+    this.synthetic = util.isSynthetic(data)
     this.initialPath = treePath.root
 
     if (settings.analyse.supportedVariants.indexOf(this.data.game.variant.key) === -1) {
@@ -83,16 +83,14 @@ export default class AnalyseCtrl {
       router.set('/')
     }
 
+    this.tree = makeTree(treeOps.reconstruct(this.data.treeParts));
+
     this.settings = analyseSettings.controller(this)
     this.menu = menu.controller(this)
     this.continuePopup = continuePopup.controller()
 
     this.evalSummary = this.data.analysis ? evalSummary.controller(this) : null
     this.notes = session.isConnected() && this.data.game.speed === 'correspondence' ? new NotesCtrl(this.data) : null
-
-
-    this.tree = makeTree(treeOps.reconstruct(this.data.treeParts));
-
     this.ceval = cevalCtrl(this.data.game.variant.key, this.allowCeval(), this.onCevalMsg)
     this.explorer = explorerCtrl(this, true)
     this.debouncedExplorerSetStep = debounce(this.explorer.setStep, this.data.pref.animationDuration + 50)
@@ -104,6 +102,7 @@ export default class AnalyseCtrl {
 
     const mainline = treeOps.mainlineNodeList(this.tree.root)
     this.initialPath = treeOps.takePathWhile(mainline, n => n.ply <= initPly)
+    this.setPath(this.initialPath)
 
     const gameMoment = window.moment(this.data.game.createdAt)
     this.vm = {
@@ -149,7 +148,7 @@ export default class AnalyseCtrl {
       socket.createGame(
         this.data.url.socket,
         this.data.player.version,
-        socketHandler(this, this.data.game.id, this.orientation),
+        socketHandler(this),
         this.data.url.round
       )
     }
@@ -231,7 +230,7 @@ export default class AnalyseCtrl {
     this.setPath(path)
     // this.toggleVariationMenu()
     this.showGround()
-    this.getOpening()
+    this.fetchOpening()
     if (this.node && this.node.san && direction === 'forward') {
       if (this.node.san.indexOf('x') !== -1) sound.throttledCapture()
       else sound.throttledMove()
@@ -247,7 +246,7 @@ export default class AnalyseCtrl {
     this.jump(path, direction)
   }
 
-  mainlinePathToPly(ply: Ply): Tree.Path {
+  private mainlinePathToPly(ply: Ply): Tree.Path {
     return treeOps.takePathWhile(this.mainline, n => n.ply <= ply)
   }
 
@@ -523,7 +522,7 @@ export default class AnalyseCtrl {
           handleXhrError(e)
         })
       } else {
-        const endSituation = this.data.steps[this.data.steps.length - 1]
+        const endSituation = this.tree.lastNode()
         const white = this.data.player.color === 'white' ?
         (this.data.game.id === 'offline_ai' ? session.appUser('Anonymous') : 'Anonymous') :
         (this.data.game.id === 'offline_ai' ? this.data.opponent.username : 'Anonymous')
@@ -557,6 +556,12 @@ export default class AnalyseCtrl {
       gameApi.analysable(this.data)
   }
 
+  mergeAnalysisData(data: AnalyseDataWithTree): void {
+    this.tree.merge(data.tree)
+    this.data.analysis = data.analysis;
+    redraw()
+  }
+
   private getNodeSituation = debounce(() => {
     if (this.node && !this.node.dests) {
       chess.situation({
@@ -580,7 +585,7 @@ export default class AnalyseCtrl {
     }
   }, 50)
 
-  private getOpening = debounce(() => {
+  private fetchOpening = debounce(() => {
     if (
       hasNetwork() && this.node && this.node.opening === undefined &&
       this.node.ply <= 20 && this.node.ply > 0 &&

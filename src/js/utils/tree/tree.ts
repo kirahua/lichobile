@@ -6,6 +6,7 @@ export type MaybeNode = Tree.Node | undefined
 
 export interface TreeWrapper {
   root: Tree.Node
+  lastNode: () => Tree.Node,
   firstPly(): number
   lastPly(): number
   nodeAtPath(path: Tree.Path): Tree.Node
@@ -217,6 +218,7 @@ export function build(root: Tree.Node): TreeWrapper {
     lastPly(): number {
       return lastNode().ply
     },
+    lastNode,
     nodeAtPath,
     getNodeList,
     longestValidPath: (path: string) => longestValidPathFrom(root, path),

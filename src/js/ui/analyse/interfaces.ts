@@ -3,9 +3,13 @@ import { Tree } from '../../utils/tree'
 import AnalyseCtrl from './AnalyseCtrl'
 
 export interface AnalysisData extends GameData {
+  userAnalysis: boolean
   analysis?: RemoteAnalysis
-  steps: any
   treeParts: Tree.Node[]
+}
+
+export interface AnalyseDataWithTree extends AnalysisData {
+  tree: Tree.Node
 }
 
 export interface RoleToSan {
